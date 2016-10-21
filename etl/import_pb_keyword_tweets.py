@@ -1,6 +1,6 @@
 import json
 import io 
-import sys
+import sys 
 import tarfile
 from pprint import pprint 
 import time
@@ -8,6 +8,7 @@ import gzip
 import sqlalchemy
 import os
 from sqlalchemy.sql import exists
+import psycopg2
 
 # Custom Imports 
 sys.path.append('../database/')
@@ -134,36 +135,35 @@ if __name__ == "__main__":
     with io.open(INFILE, 'r') as infile:
             
         invalid_lines = 0
-        to_commit = []
         ts = 0
         us = 0
+        s = time.time()
         for ln, line in enumerate(infile):
 
             tweet = read_tweet(line)
             if tweet is None:
                 invalid_lines += 1
-                continue
+            else:
+                u, t, uid, tid = make_sql(tweet) # user, tweet, userid, tweetid
 
-            u, t, uid, tid = make_sql(tweet) # user, tweet, userid, tweetid
-
-            ## Insert them to database
-            user_exists = session.query(exists().where(User.id==uid)).scalar()
-            tweet_exists = session.query(exists().where(Tweet.id==tid)).scalar()
-            
-            if not user_exists:
-                session.add(u)
-                us += 1
-            if not tweet_exists:
-                session.add(t)
-                ts += 1
-             
+                ## Insert them to database
+                user_exists = session.query(exists().where(User.id==uid)).scalar()
+                tweet_exists = session.query(exists().where(Tweet.id==tid)).scalar()
+                
+                if not user_exists:
+                    session.add(u)
+                    us += 1
+                        
+                if not tweet_exists:
+                    session.add(t)
+                    ts += 1
 
             if ln % 10000 == 0:
                 print("Processed {} lines. {} relevant tweets, "
-                      "{} tweets inserted, {} users inserted."
-                      "Committing to db...".format(ln, ln - invalid_lines, ts, 
-                                                   us))
-                #session.add_all(to_commit)
+                      "{} tweets inserted, {} users inserted.".format(
+                          ln, ln - invalid_lines, ts, us))
                 session.commit()
+                print('This chunk took: {}s'.format(round(time.time() - s, 2)))
+                s = time.time()
                 
 
