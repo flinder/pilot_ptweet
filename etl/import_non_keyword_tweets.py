@@ -7,20 +7,19 @@ import time
 import gzip
 import sqlalchemy
 import os
+import re
 from sqlalchemy.sql import exists
-import psycopg2
 
 # Custom Imports 
 sys.path.append('../database/')
 from db import make_session, make_sql, User, Tweet
 
-def keyword_in(tweet):
+def keyword_in(tweet, keyword):
     text = tweet['text']
-    kws = ['fluchtling', 'flüchtling', 'fluechtling', 'asyl'] 
-    for kw in kws:
-        if kw in text:
-            return True
-    return False
+    if keyword.search(text):
+        return True
+    else:
+        return False
 
 def is_valid(tweet):
     keys = ['text', 'id_str', 'created_at']
@@ -31,7 +30,7 @@ def is_valid(tweet):
             return False
     return True
 
-def read_tweet(line):
+def read_tweet(line, keyword):
     '''
     Read line from infile, check if valid json, check if valid tweet (has all
     required fields) and check if relevant tweet (has relevant keywords)
@@ -47,18 +46,23 @@ def read_tweet(line):
     if not is_valid(tweet):
         return None
 
-    # Check if tweet has any of the keywords 
-    if not keyword_in(tweet):
+    # Check if tweet has any of the keywords and exclude if present
+    if keyword_in(tweet, keyword):
         return None
 
     # If all checks pass return the tweet as dictionary
     return tweet
+
+
 if __name__ == "__main__":
 
 
     # Parameters 
-    INFILE = '../../data/pablos_stuff/keyword_tweets/pb_keyword_tweets.json'
-
+    INFILE = sys.argv[1]
+    
+    data_id = os.path.basename(INFILE).strip('.json')
+    keywords = re.compile('(flüchtling|fluechtling|refugee|asyl)', re.IGNORECASE)     
+    
     # Set up sqlalchemy session
     session = make_session()
         
@@ -70,16 +74,15 @@ if __name__ == "__main__":
         s = time.time()
         for ln, line in enumerate(infile):
 
-            tweet = read_tweet(line)
+            tweet = read_tweet(line, keywords)
             if tweet is None:
                 invalid_lines += 1
             else:
-                u, t, uid, tid = make_sql(tweet, 'pb_keyword') # user, tweet, userid, tweetid
-
+                u, t, uid, tid = make_sql(tweet, data_id) # user, tweet, userid, tweetid
                 ## Insert them to database
                 user_exists = session.query(exists().where(User.id==uid)).scalar()
                 tweet_exists = session.query(exists().where(Tweet.id==tid)).scalar()
-                
+
                 if not user_exists:
                     session.add(u)
                     us += 1
