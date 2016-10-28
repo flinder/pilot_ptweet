@@ -1,6 +1,7 @@
 import json
 import sys
 import time
+import pandas as pd
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (
@@ -90,7 +91,7 @@ def make_session(credential_file='../database/db_credentials'):
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    return session
+    return session, engine
 
 def get_str_as_int(d, key):
     string = d.get(key, None)
@@ -172,6 +173,17 @@ def make_sql(tweet, data_identifier):
               data_group=data_identifier)
 
     return u, t, uid, id_
+
+
+import pandas as pd
+
+def data_frame(query, columns):
+    """
+    Takes a sqlalchemy query and a list of columns, returns a dataframe.
+    """
+    def make_row(x):
+        return dict([(c, getattr(x, c)) for c in columns])       
+    return pd.DataFrame([make_row(x) for x in query])
 
 
 if __name__ == "__main__":
