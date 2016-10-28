@@ -1,2 +1,4 @@
 db_credentials
 __pycache__/
+*.json
+*.p
