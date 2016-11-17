@@ -5,3 +5,5 @@ __pycache__/
 *.txt
 *.log
 twitter_credentials.py
+*.csv
+*.pyc
