@@ -35,7 +35,9 @@ class idGenerator(object):
 
         for i in count():
             prop = np.random.randint(0, 4924990722) # Weirdly the youngest user in pablos sample has a 33 bit id
+            # If not starting from the beginning skip to where we left it
             if i <= self.n_samples:
+                self.sampled_ids.update([prop])
                 continue
             self.n_samples += 1
             if prop in self.sampled_ids:
@@ -105,7 +107,7 @@ if __name__ == '__main__':
     # Set params
     OUTFILE = 'crc_results.csv'
     TRACKFILE = 'crc_track.p'
-    goal_n_recaptured = 10
+    goal_n_recaptured = 1000
 
     # Pick up where stopped last time
     id_generator = idGenerator()
@@ -154,6 +156,7 @@ if __name__ == '__main__':
        
         # Wait if no requests left
         if remaining == 0:
+            limits = api.rate_limit_status()
             reset_time = limits['resources']['users']['/users/lookup']['reset']
             time_to_reset = reset_time - time.time() + 10
             msg = 'Rate limited. Waiting {} minutes...'
@@ -179,4 +182,6 @@ if __name__ == '__main__':
                 print('Rate limited waiting 15 minutes...')
                 time.sleep(60 * 15)
             else:
-                raise
+                print('Unexpected Error code: {}'.format(e))
+                print('Retrying in 1 minute...')
+                time.sleep(60)
