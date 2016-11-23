@@ -7,3 +7,4 @@ __pycache__/
 twitter_credentials.py
 *.csv
 *.pyc
+/data
