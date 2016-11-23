@@ -33,7 +33,7 @@ estimate_population <- function(df) {
 
 # Get estimate for specified y (inverse sampling)
 y <- 30
-df1 <- read.csv('crc_results.csv')
+df1 <- read.csv('../data/crc_results.csv')
 csum <- cumsum(df1[, 4])
 i <- which(csum == y)[1] 
 df <- df1[1:i, ]
