@@ -14,7 +14,7 @@ estimate_population <- function(df) {
    se_pop_est <- sqrt(n_first_sample^2 * n_hits_de * (n_hits_de - n_recap) / 
        (n_recap^2 * (n_recap + 1)))
    ci <- pop_est + 1.96 * c(-se_pop_est, se_pop_est)
-   out <- c(ci[1], pop_est, ci[2], se_pop_est^2)
+   out <- c(ci[1], pop_est, ci[2], se_pop_est)
    cat(rep('=', 40))
    cat('\n')
    cat(paste('Previous sample size:', prettyNum(n_first_sample, big.mark = ','), 
@@ -27,7 +27,7 @@ estimate_population <- function(df) {
    cat('\n')
    cat(paste0('Estimated population size: ', prettyNum(pop_est, big.mark = ','), 
               " (+/- ", prettyNum(1.96 * se_pop_est, big.mark = ','), ')\n'))
-   names(out) <- c("lower", "point_estimate", "upper", "variance")
+   names(out) <- c("lower", "point_estimate", "upper", "sd")
    return(out)
 }
 
@@ -39,14 +39,39 @@ i <- which(csum == y)[1]
 df <- df1[1:i, ]
 res <- estimate_population(df)
 
-stop()
-
 # Use proportion estimates (see proposal manuscript for now) to get absolute
 # numbers and carry uncertainty forward with bootstrapping
 
 ## Bootstrap point estimates
-taus <- rnorm(10000, res
+bs_abs_est <- function(point, prop) {
+    set.seed(29866638)
+    taus <- rnorm(10000, point[1], point[2])
+    prop_estimates <- rnorm(10000, prop[1], prop[2])
+    abs_ci <- quantile(taus * prop_estimates, c(0.025, 0.975))
+    abs_mean <- mean(taus * prop_estimates)
+    out <- c(abs_ci[1], abs_mean, abs_ci[2])
+    names(out) <- c("lower", "mean", "upper")
+    return(out)
+}
 
+### For users with at least 1 tweet
+point <- c(res["point_estimate"], res["sd"])
+prop <- c(0.06, 0.0039 / 1.96)
+res_1 <- bs_abs_est(point, prop)
+
+### For users with at least 1 tweet
+point <- c(res["point_estimate"], res["sd"])
+prop <- c(0.008, 0.002 / 1.96)
+res_10 <- bs_abs_est(point, prop)
+
+### For users with at least 1 tweet
+point <- c(res["point_estimate"], res["sd"])
+prop <- c(0.006, 0.0003 / 1.96)
+res_100 <- bs_abs_est(point, prop)
+
+res_1
+res_10
+res_100
 
 # Make plot of the sampling progression
 stepsize <- 100000
