@@ -11,8 +11,7 @@ import time
 import os
 
 from pprint import pprint
-from itertools import count, islice
-
+from itertools import count, islice 
 sys.path.append('../')
 sys.path.append('../../database/')
 import twitter_credentials as tc
@@ -66,7 +65,7 @@ def get_valid_users(results):
     
     return(out)
 
-def write_results(res, id_batch, track, outfile_name):
+def write_results(res, id_batch, outfile_name):
           
     valid = get_valid_users(res)
 
@@ -88,42 +87,37 @@ def write_results(res, id_batch, track, outfile_name):
                 recap = 1
             outfile.write(outline.format(id_, hit, hit_de, recap))
 
-
-    track['queried'].update(queried)
-    track['hits'].update(hits)
-    track['hits_de'].update(hits_de)
-    track['recaptured'].update(recaptured)
-
-    return track
-
 def file_len(f):
     for i, l in enumerate(f):
         pass
     return i + 1
+
+def get_sampled_ids(f):
+    f.seek(0)
+    header = next(f)
+    if header.split(',')[0] != 'id':
+        ValueError('Invalid header')
+    ids = set([int(l.split(',')[0]) for l in f])
+    return ids
 
 
 if __name__ == '__main__':
 
     # Set params
     OUTFILE = 'crc_results.csv'
-    TRACKFILE = 'crc_track.p'
     goal_n_recaptured = 1000
 
     # Pick up where stopped last time
     id_generator = idGenerator()
     outline = '{},{},{},{}\n'
     # If running for first time
-    if not os.path.isfile(OUTFILE) or not os.path.isfile(TRACKFILE):
+    if not os.path.isfile(OUTFILE):
         with io.open(OUTFILE, 'w') as outfile:
             outfile.write(outline.format('id', 'hit', 'hit_de', 'recaptured'))
-        track = {"queried": set(), "hits": set(), "hits_de": set(),
-                 "recaptured": set()}
     else:
         with io.open(OUTFILE, 'r') as outfile:
             id_generator.n_samples = file_len(outfile) - 1
-        with io.open(TRACKFILE, 'rb') as trackfile:
-            track = pickle.load(trackfile)
-
+            id_generator.sampled_ids = get_sampled_ids(outfile)
     
     # Set up authentication and api
     acc = tc.credentials['coll_1']
@@ -143,10 +137,6 @@ if __name__ == '__main__':
     remaining = limits['resources']['users']['/users/lookup']['remaining']
 
     for i in count():
-
-        # Stopping condition
-        if len(track['recaptured']) >= goal_n_recaptured:
-            break
 
         # Sleep random time (Expectation 1 second == 900 requests per 15 minutes)
         time.sleep(1 + np.random.exponential(scale=0.1))
@@ -169,8 +159,7 @@ if __name__ == '__main__':
         try:
             res = api.lookup_users(user_ids=id_batch)
             remaining -= 1
-            track = write_results(res, id_batch, track, OUTFILE)
-            pickle.dump(track, open(TRACKFILE, 'wb'))
+            write_results(res, id_batch, OUTFILE)
 
         except tweepy.TweepError as e:
             error_code = e.api_code
